@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#2563eb" rx="76.8"/>
+
+  <!-- Dumbbell Icon (simplified) -->
+  <g fill="white">
+    <!-- Left weight -->
+    <rect x="51.2" y="179.2" width="61.44" height="153.6" rx="10.24"/>
+    <!-- Right weight -->
+    <rect x="399.36" y="179.2" width="61.44" height="153.6" rx="10.24"/>
+    <!-- Bar -->
+    <rect x="112.64" y="235.52" width="286.72" height="40.96" rx="10.24"/>
+    <!-- Left grip -->
+    <rect x="122.88" y="215.04" width="40.96" height="81.92" rx="5.12"/>
+    <!-- Right grip -->
+    <rect x="348.16" y="215.04" width="40.96" height="81.92" rx="5.12"/>
+  </g>
+
+  <!-- Size label for development -->
+  <text x="256" y="460.8" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="51.2" font-weight="bold">512px</text>
+</svg>
