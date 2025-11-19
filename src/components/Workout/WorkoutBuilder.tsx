@@ -19,6 +19,7 @@ import {
   WorkoutTemplate,
   ExerciseTemplate,
   MuscleGroup,
+  ExerciseDifficulty,
 } from "@/types/workout";
 import {
   saveTemplate,
@@ -29,6 +30,7 @@ import {
   formatDuration,
 } from "@/lib/storage";
 import { useWorkout } from "@/contexts/WorkoutContext";
+import { generateWorkout, WORKOUT_PRESETS } from "@/lib/workoutGenerator";
 
 // Available muscle groups - edit this array to add/remove options
 const MUSCLE_GROUPS: MuscleGroup[] = [
@@ -60,6 +62,7 @@ export default function WorkoutBuilder() {
   const [editingExerciseIndex, setEditingExerciseIndex] = useState<
     number | null
   >(null);
+  const [showAutoGenerate, setShowAutoGenerate] = useState(false);
 
   // Load saved builder state on mount
   useEffect(() => {
@@ -145,9 +148,17 @@ export default function WorkoutBuilder() {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <h2 className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">
-        Workout Builder
-      </h2>
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Workout Builder
+        </h2>
+        <button
+          onClick={() => setShowAutoGenerate(true)}
+          className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:bg-purple-500 dark:hover:bg-purple-600"
+        >
+          ⚡ Auto-Generate
+        </button>
+      </div>
 
       {/* Workout Meta */}
       <div className="mb-6 space-y-4">
@@ -352,6 +363,17 @@ export default function WorkoutBuilder() {
         </button>
       </div>
 
+      {/* Auto-Generate Modal */}
+      {showAutoGenerate && (
+        <AutoGenerateModal
+          onGenerate={(generatedWorkout) => {
+            setWorkout(generatedWorkout);
+            setShowAutoGenerate(false);
+          }}
+          onCancel={() => setShowAutoGenerate(false)}
+        />
+      )}
+
       {/* Exercise Form Modal */}
       {showExerciseForm && (
         <ExerciseFormModal
@@ -368,6 +390,189 @@ export default function WorkoutBuilder() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+// AUTO-GENERATE MODAL
+interface AutoGenerateModalProps {
+  onGenerate: (workout: WorkoutTemplate) => void;
+  onCancel: () => void;
+}
+
+function AutoGenerateModal({ onGenerate, onCancel }: AutoGenerateModalProps) {
+  const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[]>([]);
+  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [difficulty, setDifficulty] = useState<ExerciseDifficulty>("beginner");
+
+  const handleMuscleToggle = (muscle: MuscleGroup) => {
+    setSelectedMuscles((prev) =>
+      prev.includes(muscle)
+        ? prev.filter((m) => m !== muscle)
+        : [...prev, muscle]
+    );
+  };
+
+  const handleGenerate = () => {
+    if (selectedMuscles.length === 0) {
+      alert("Please select at least one muscle group");
+      return;
+    }
+
+    const generated = generateWorkout({
+      muscleGroups: selectedMuscles,
+      durationMinutes,
+      difficulty,
+    });
+
+    onGenerate(generated);
+  };
+
+  const handlePreset = (presetName: keyof typeof WORKOUT_PRESETS) => {
+    const generated = WORKOUT_PRESETS[presetName]();
+    onGenerate(generated);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
+        <h3 className="mb-4 text-xl font-semibold text-gray-900 dark:text-white">
+          ⚡ Auto-Generate Workout
+        </h3>
+
+        {/* Quick Presets */}
+        <div className="mb-6">
+          <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Quick Presets
+          </label>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <button
+              onClick={() => handlePreset("pushDay")}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            >
+              Push Day
+            </button>
+            <button
+              onClick={() => handlePreset("pullDay")}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            >
+              Pull Day
+            </button>
+            <button
+              onClick={() => handlePreset("legDay")}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            >
+              Leg Day
+            </button>
+            <button
+              onClick={() => handlePreset("fullBody")}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            >
+              Full Body
+            </button>
+            <button
+              onClick={() => handlePreset("upperBody")}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            >
+              Upper Body
+            </button>
+            <button
+              onClick={() => handlePreset("quickWorkout")}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+            >
+              Quick (30min)
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-4 border-t border-gray-200 dark:border-gray-700"></div>
+
+        {/* Custom Generation */}
+        <div className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Select Muscle Groups
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {MUSCLE_GROUPS.map((muscle) => (
+                <button
+                  key={muscle}
+                  onClick={() => handleMuscleToggle(muscle)}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                    selectedMuscles.includes(muscle)
+                      ? "bg-purple-600 text-white dark:bg-purple-500"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                  }`}
+                  aria-pressed={selectedMuscles.includes(muscle)}
+                >
+                  {muscle}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="duration"
+              className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Target Duration: {durationMinutes} minutes
+            </label>
+            <input
+              id="duration"
+              type="range"
+              min="20"
+              max="120"
+              step="5"
+              value={durationMinutes}
+              onChange={(e) => setDurationMinutes(parseInt(e.target.value))}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>20min</span>
+              <span>120min</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Difficulty Level
+            </label>
+            <div className="flex gap-2">
+              {(["beginner", "intermediate", "advanced"] as ExerciseDifficulty[]).map(
+                (level) => (
+                  <button
+                    key={level}
+                    onClick={() => setDifficulty(level)}
+                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium capitalize ${
+                      difficulty === level
+                        ? "bg-purple-600 text-white dark:bg-purple-500"
+                        : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                    }`}
+                  >
+                    {level}
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleGenerate}
+            className="flex-1 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:bg-purple-500 dark:hover:bg-purple-600"
+          >
+            Generate Workout
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -392,8 +597,13 @@ function ExerciseFormModal({
       title: "",
       muscleGroup: "Chest",
       description: "",
+      category: "compound", // Required field: compound, isolation, or finisher
+      difficulty: "beginner",
+      equipment: [],
       defaultSets: 3,
+      suggestedReps: "8-12",
       restSeconds: defaultRestSeconds,
+      isCustom: true, // User-created exercises are marked as custom
     }
   );
 
