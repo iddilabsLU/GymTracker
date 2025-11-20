@@ -24,6 +24,7 @@ import {
   ExerciseTemplate,
   WorkoutSessionExercise,
 } from "@/types/workout";
+import { EXERCISE_DATABASE } from "@/data/exerciseDatabase";
 import {
   getRecentSessions,
   calculateTotalSets,
@@ -458,16 +459,28 @@ function ExerciseSwapModal({
   onSwap,
   onClose,
 }: ExerciseSwapModalProps) {
-  const templates = getTemplates();
-  const allExercises: ExerciseTemplate[] = templates.flatMap(
-    (t) => t.exercises
-  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | "All">("All");
 
-  // Remove duplicates by title
+  // Merge preloaded database with user's custom exercises
+  const templates = getTemplates();
+  const userExercises = templates.flatMap((t) => t.exercises);
+  const allExercises: ExerciseTemplate[] = [...EXERCISE_DATABASE, ...userExercises];
+
+  // Remove duplicates by title (prioritize database exercises)
   const uniqueExercises = allExercises.filter(
     (exercise, index, self) =>
       index === self.findIndex((e) => e.title === exercise.title)
   );
+
+  // Filter by search and muscle group
+  const filteredExercises = uniqueExercises.filter((exercise) => {
+    const matchesSearch = exercise.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesMuscle = selectedMuscle === "All" || exercise.muscleGroup === selectedMuscle;
+    return matchesSearch && matchesMuscle;
+  });
+
+  const muscles: ("All" | MuscleGroup)[] = ["All", "Chest", "Back", "Legs", "Shoulders", "Arms", "Core"];
 
   const handleSwap = (template: ExerciseTemplate) => {
     const newExercise: WorkoutSessionExercise = {
@@ -501,13 +514,39 @@ function ExerciseSwapModal({
           Current: <span className="font-medium">{currentExercise.title}</span>
         </div>
 
-        {uniqueExercises.length === 0 ? (
+        {/* Search bar */}
+        <input
+          type="text"
+          placeholder="Search exercises..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="mb-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        />
+
+        {/* Muscle filter chips */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          {muscles.map((muscle) => (
+            <button
+              key={muscle}
+              onClick={() => setSelectedMuscle(muscle)}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                selectedMuscle === muscle
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              }`}
+            >
+              {muscle}
+            </button>
+          ))}
+        </div>
+
+        {filteredExercises.length === 0 ? (
           <div className="rounded-lg border-2 border-dashed border-gray-300 p-8 text-center text-gray-500 dark:border-gray-600 dark:text-gray-400">
-            No saved exercises found. Add exercises in saved templates first.
+            No exercises found. Try different filters.
           </div>
         ) : (
-          <div className="space-y-2">
-            {uniqueExercises.map((exercise) => (
+          <div className="max-h-[400px] space-y-2 overflow-y-auto">
+            {filteredExercises.map((exercise) => (
               <button
                 key={exercise.id}
                 onClick={() => handleSwap(exercise)}
@@ -516,9 +555,23 @@ function ExerciseSwapModal({
                 <div className="font-medium text-gray-900 dark:text-white">
                   {exercise.title}
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {exercise.muscleGroup} • {exercise.description.slice(0, 60)}
-                  ...
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                    {exercise.muscleGroup}
+                  </span>
+                  {exercise.category && (
+                    <span className="rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                      {exercise.category}
+                    </span>
+                  )}
+                  {exercise.difficulty && (
+                    <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                      {exercise.difficulty}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                  {exercise.description.slice(0, 80)}...
                 </div>
               </button>
             ))}

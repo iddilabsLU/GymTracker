@@ -20,6 +20,7 @@ import {
   ExerciseTemplate,
   MuscleGroup,
   ExerciseDifficulty,
+  WorkoutGenerationPreferences,
 } from "@/types/workout";
 import {
   saveTemplate,
@@ -404,6 +405,8 @@ function AutoGenerateModal({ onGenerate, onCancel }: AutoGenerateModalProps) {
   const [selectedMuscles, setSelectedMuscles] = useState<MuscleGroup[]>([]);
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [difficulty, setDifficulty] = useState<ExerciseDifficulty>("beginner");
+  const [generatedWorkout, setGeneratedWorkout] = useState<WorkoutTemplate | null>(null);
+  const [lastPreferences, setLastPreferences] = useState<WorkoutGenerationPreferences | null>(null);
 
   const handleMuscleToggle = (muscle: MuscleGroup) => {
     setSelectedMuscles((prev) =>
@@ -419,18 +422,55 @@ function AutoGenerateModal({ onGenerate, onCancel }: AutoGenerateModalProps) {
       return;
     }
 
-    const generated = generateWorkout({
+    const preferences = {
       muscleGroups: selectedMuscles,
       durationMinutes,
       difficulty,
-    });
+    };
 
-    onGenerate(generated);
+    const generated = generateWorkout(preferences);
+    setGeneratedWorkout(generated);
+    setLastPreferences(preferences);
+  };
+
+  const handleRegenerate = () => {
+    if (lastPreferences) {
+      const generated = generateWorkout(lastPreferences);
+      setGeneratedWorkout(generated);
+    }
+  };
+
+  const handleAccept = () => {
+    if (generatedWorkout) {
+      onGenerate(generatedWorkout);
+    }
   };
 
   const handlePreset = (presetName: keyof typeof WORKOUT_PRESETS) => {
     const generated = WORKOUT_PRESETS[presetName]();
-    onGenerate(generated);
+    setGeneratedWorkout(generated);
+    // Store preset preferences for regeneration
+    const presetPrefs = getPresetPreferences(presetName);
+    setLastPreferences(presetPrefs);
+  };
+
+  const getPresetPreferences = (presetName: keyof typeof WORKOUT_PRESETS): WorkoutGenerationPreferences => {
+    switch (presetName) {
+      case "pushDay":
+        return { muscleGroups: ["Chest", "Shoulders", "Arms"], durationMinutes: 60 };
+      case "pullDay":
+        return { muscleGroups: ["Back", "Arms"], durationMinutes: 60 };
+      case "legDay":
+        return { muscleGroups: ["Legs", "Core"], durationMinutes: 60 };
+      case "fullBody":
+        return { muscleGroups: ["Chest", "Back", "Legs"], durationMinutes: 75 };
+      case "upperBody":
+        return { muscleGroups: ["Chest", "Back", "Shoulders", "Arms"], durationMinutes: 75 };
+      case "quickWorkout":
+        return { muscleGroups: ["Chest", "Back"], durationMinutes: 30, exerciseCount: 4 };
+      default:
+        return { muscleGroups: ["Chest"], durationMinutes: 60 };
+    }
   };
 
   return (
@@ -558,6 +598,33 @@ function AutoGenerateModal({ onGenerate, onCancel }: AutoGenerateModalProps) {
           </div>
         </div>
 
+        {/* Generated Workout Preview */}
+        {generatedWorkout && (
+          <div className="mt-6 rounded-lg border-2 border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-900/20">
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="font-semibold text-gray-900 dark:text-white">
+                ✨ {generatedWorkout.name}
+              </h4>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {generatedWorkout.exercises.length} exercises
+              </span>
+            </div>
+            <div className="mb-2 flex flex-wrap gap-1">
+              {generatedWorkout.muscles.map((muscle) => (
+                <span
+                  key={muscle}
+                  className="rounded-full bg-purple-200 px-2 py-0.5 text-xs font-medium text-purple-800 dark:bg-purple-800 dark:text-purple-200"
+                >
+                  {muscle}
+                </span>
+              ))}
+            </div>
+            <div className="text-xs text-gray-600 dark:text-gray-400">
+              {generatedWorkout.exercises.map((ex) => ex.title).join(" • ")}
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 flex gap-3">
           <button
             onClick={onCancel}
@@ -565,12 +632,29 @@ function AutoGenerateModal({ onGenerate, onCancel }: AutoGenerateModalProps) {
           >
             Cancel
           </button>
-          <button
-            onClick={handleGenerate}
-            className="flex-1 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:bg-purple-500 dark:hover:bg-purple-600"
-          >
-            Generate Workout
-          </button>
+          {generatedWorkout ? (
+            <>
+              <button
+                onClick={handleRegenerate}
+                className="flex-1 rounded-lg border border-purple-600 bg-white px-4 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:border-purple-500 dark:bg-gray-800 dark:text-purple-400 dark:hover:bg-gray-700"
+              >
+                🔄 Regenerate
+              </button>
+              <button
+                onClick={handleAccept}
+                className="flex-1 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:bg-purple-500 dark:hover:bg-purple-600"
+              >
+                Accept & Close
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleGenerate}
+              className="flex-1 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:bg-purple-500 dark:hover:bg-purple-600"
+            >
+              Generate Workout
+            </button>
+          )}
         </div>
       </div>
     </div>
